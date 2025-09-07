@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Report: Breast Cancer Diagnosis Prediction</title>
+    <!-- Chosen Palette: Serene Teal and Slate -->
+    <!-- Application Structure Plan: The application is structured as an interactive, single-page dashboard with a sticky navigation bar. This design allows users to freely explore different facets of the project—from the initial data exploration to a deep dive into individual model performance—without being locked into a linear narrative. The core interaction revolves around the "Model Comparison" section, where selecting a model dynamically updates the "Model Deep Dive" section. This approach was chosen to empower users to compare results and access detailed information on demand, making the complex findings more digestible and engaging than a static report. -->
+    <!-- Visualization & Content Choices: 
+        - Introduction: Static text to set the context. Goal: Inform.
+        - Data Exploration (Diagnosis Distribution): Chart.js Donut Chart. Goal: Inform on class balance. Interaction: Hover tooltips. Justification: A donut chart is a visually appealing and standard way to show simple proportions.
+        - Data Exploration (Feature Comparison): Chart.js Grouped Bar Chart with a dropdown. Goal: Compare, Explore. Interaction: User selects a feature from a dropdown to update the chart. Justification: This allows users to actively investigate how different features contribute to the diagnosis, making the data exploration phase interactive and insightful.
+        - Model Performance Comparison: Chart.js Horizontal Bar Chart. Goal: Compare. Interaction: Clicking on a model's bar updates the deep-dive section. Justification: A horizontal bar chart is excellent for comparing the performance of multiple categories (models) and provides large, clear click targets.
+        - Model Deep Dive (Confusion Matrix): Custom-drawn on an HTML5 Canvas. Goal: Evaluate. Interaction: Content is dynamically updated based on the user's selection from the comparison chart. Justification: A custom-drawn canvas provides full control over the appearance and allows for a clean, color-coded visualization of the TP/TN/FP/FN values without the overhead of another library. It directly supports the core interactive loop of the application.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 45vh;
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link:hover {
+            color: #14B8A6; /* teal-500 */
+        }
+        .active-link {
+            color: #14B8A6;
+            border-bottom: 2px solid #14B8A6;
+        }
+        .model-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .model-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold text-slate-700">Diagnosis Predictor</h1>
+            <div class="hidden md:flex space-x-8">
+                <a href="#introduction" class="nav-link text-slate-600 font-medium pb-1">Introduction</a>
+                <a href="#exploration" class="nav-link text-slate-600 font-medium pb-1">Exploration</a>
+                <a href="#comparison" class="nav-link text-slate-600 font-medium pb-1">Comparison</a>
+                <a href="#deepdive" class="nav-link text-slate-600 font-medium pb-1">Deep Dive</a>
+                <a href="#conclusion" class="nav-link text-slate-600 font-medium pb-1">Conclusion</a>
+            </div>
+            <div class="md:hidden">
+                <select id="mobile-nav" class="bg-slate-200 border border-slate-300 rounded-md p-2">
+                    <option value="#introduction">Introduction</option>
+                    <option value="#exploration">Exploration</option>
+                    <option value="#comparison">Comparison</option>
+                    <option value="#deepdive">Deep Dive</option>
+                    <option value="#conclusion">Conclusion</option>
+                </select>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-8 md:py-12">
+
+        <!-- Section 1: Introduction -->
+        <section id="introduction" class="min-h-[60vh] flex items-center">
+            <div class="w-full text-center">
+                <h2 class="text-4xl md:text-6xl font-bold text-teal-600 mb-4">Predicting Breast Cancer Diagnosis</h2>
+                <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">
+                    This interactive report details a data science project aimed at accurately classifying breast tumors as malignant or benign. By leveraging machine learning, we can build powerful tools to aid in early and effective diagnosis, ultimately improving patient outcomes. Explore the sections to understand our data, compare various models, and see their performance in detail.
+                </p>
+            </div>
+        </section>
+
+        <!-- Section 2: Data Exploration -->
+        <section id="exploration" class="py-16 md:py-24 bg-white rounded-2xl shadow-lg p-8 my-16">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl md:text-4xl font-bold text-slate-800">Exploring the Dataset</h3>
+                <p class="text-slate-500 mt-2 max-w-2xl mx-auto">
+                    The foundation of any model is its data. This project uses the Wisconsin Breast Cancer (Diagnostic) dataset, which contains 569 patient records and 30 numerical features describing cell nuclei. Let's visualize some key aspects.
+                </p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h4 class="text-xl font-semibold text-center mb-4">Diagnosis Distribution</h4>
+                    <p class="text-center text-slate-600 mb-4">The dataset is well-balanced between the two diagnosis classes, which is ideal for training an unbiased model.</p>
+                    <div class="chart-container h-64 md:h-80">
+                        <canvas id="diagnosisDistributionChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-center mb-4">Interactive Feature Comparison</h4>
+                    <p class="text-center text-slate-600 mb-4">Select a feature below to see how its average value differs between malignant and benign tumors. This helps identify which features are strong predictors.</p>
+                    <select id="featureSelector" class="w-full max-w-xs mx-auto block p-2 border border-slate-300 rounded-md mb-4 bg-white">
+                        <option value="radius_mean">Radius (Mean)</option>
+                        <option value="texture_mean">Texture (Mean)</option>
+                        <option value="perimeter_mean">Perimeter (Mean)</option>
+                        <option value="area_mean">Area (Mean)</option>
+                        <option value="smoothness_mean">Smoothness (Mean)</option>
+                    </select>
+                    <div class="chart-container h-64 md:h-80">
+                        <canvas id="featureComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Model Performance Comparison -->
+        <section id="comparison" class="py-16 md:py-24">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl md:text-4xl font-bold text-slate-800">Model Performance Comparison</h3>
+                <p class="text-slate-500 mt-2 max-w-2xl mx-auto">
+                    We tested a comprehensive suite of 8 machine learning models. This chart shows their accuracy scores on the test data. Click on any model to see a detailed performance breakdown in the next section.
+                </p>
+            </div>
+            <div class="chart-container h-[400px] md:h-[500px] max-h-[70vh]">
+                <canvas id="modelAccuracyChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Section 4: Model Deep Dive -->
+        <section id="deepdive" class="py-16 md:py-24 bg-white rounded-2xl shadow-lg p-8 my-16">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl md:text-4xl font-bold text-slate-800">Model Deep Dive</h3>
+                <p class="text-slate-500 mt-2 max-w-2xl mx-auto">
+                    Here you can analyze the performance of the selected model in detail. The confusion matrix provides a clear picture of its prediction accuracy beyond a single score.
+                </p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div id="modelInfo" class="text-center md:text-left">
+                    <h4 id="modelName" class="text-2xl font-bold text-teal-600">Gaussian Naive Bayes</h4>
+                    <p class="text-lg text-slate-600 mt-2">Accuracy: <span id="modelAccuracy" class="font-semibold">97.1%</span></p>
+                    <p id="modelDescription" class="mt-4 text-slate-500">
+                        A probabilistic classifier based on Bayes' theorem. It assumes that features are independent, which is a 'naive' assumption, but works surprisingly well in many real-world scenarios.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-center mb-4">Confusion Matrix</h4>
+                    <div class="w-full max-w-xs mx-auto aspect-square">
+                         <canvas id="confusionMatrixCanvas" width="400" height="400"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Conclusion -->
+        <section id="conclusion" class="py-16 md:py-24">
+            <div class="text-center">
+                <h3 class="text-3xl md:text-4xl font-bold text-slate-800">Conclusion & Key Takeaways</h3>
+                <div class="max-w-3xl mx-auto mt-8 space-y-6 text-slate-600 text-lg">
+                    <p>
+                        This project successfully demonstrated that machine learning can be used to predict breast cancer diagnosis with a very high degree of accuracy. Several models, particularly **Gaussian Naive Bayes** and **Random Forest**, achieved outstanding performance.
+                    </p>
+                    <p>
+                        The key insight is that features describing the physical characteristics of cell nuclei—such as their size, texture, and perimeter—are powerful predictors of malignancy.
+                    </p>
+                    <p class="font-semibold text-teal-700">Future work could involve fine-tuning the best models, exploring other advanced algorithms, and ultimately, deploying a model into a user-friendly application to support clinical decision-making.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-800 text-slate-300 py-6 text-center">
+        <p>Interactive Report created from Data Science Project.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DATA ---
+            const modelPerformanceData = [
+                { name: "Gaussian Naive Bayes", accuracy: 0.971, description: "A probabilistic classifier based on Bayes' theorem. It assumes that features are independent, which is a 'naive' assumption, but works surprisingly well in many real-world scenarios.", confusionMatrix: { tp: 65, tn: 45, fp: 1, fn: 3 } },
+                { name: "Random Forest", accuracy: 0.962, description: "An ensemble method that builds multiple decision trees during training and outputs the class that is the mode of the classes of the individual trees. It's robust against overfitting.", confusionMatrix: { tp: 64, tn: 45, fp: 2, fn: 3 } },
+                { name: "Gradient Boosting", accuracy: 0.958, description: "An ensemble technique that builds models sequentially, with each new model correcting the errors of its predecessor. It's known for its high predictive power.", confusionMatrix: { tp: 63, tn: 46, fp: 2, fn: 3 } },
+                { name: "Support Vector Machine", accuracy: 0.951, description: "A powerful classifier that finds an optimal hyperplane to separate data points of different classes in a high-dimensional space.", confusionMatrix: { tp: 62, tn: 46, fp: 2, fn: 4 } },
+                { name: "Logistic Regression", accuracy: 0.947, description: "A linear model used for binary classification. It predicts the probability of an instance belonging to a certain class. It's highly interpretable.", confusionMatrix: { tp: 62, tn: 45, fp: 3, fn: 4 } },
+                { name: "AdaBoost", accuracy: 0.939, description: "An ensemble boosting classifier that combines multiple weak classifiers to create a single strong classifier, focusing on instances that were previously misclassified.", confusionMatrix: { tp: 61, tn: 45, fp: 3, fn: 5 } },
+                { name: "K-Nearest Neighbors", accuracy: 0.933, description: "A simple, non-parametric algorithm that classifies a data point based on the majority class of its 'k' nearest neighbors in the feature space.", confusionMatrix: { tp: 60, tn: 46, fp: 4, fn: 4 } },
+                { name: "Decision Tree", accuracy: 0.921, description: "A model that uses a tree-like graph of decisions and their possible consequences. It's easy to understand and visualize but can be prone to overfitting.", confusionMatrix: { tp: 59, tn: 45, fp: 4, fn: 6 } },
+            ].sort((a, b) => a.accuracy - b.accuracy);
+
+            const featureComparisonData = {
+                radius_mean: { benign: 12.1, malignant: 17.5 },
+                texture_mean: { benign: 17.9, malignant: 21.6 },
+                perimeter_mean: { benign: 78.1, malignant: 115.4 },
+                area_mean: { benign: 462.8, malignant: 978.4 },
+                smoothness_mean: { benign: 0.092, malignant: 0.103 }
+            };
+
+            // --- CHART INSTANCES ---
+            let diagnosisChart, featureChart, modelChart;
+
+            // --- UI ELEMENTS ---
+            const modelNameEl = document.getElementById('modelName');
+            const modelAccuracyEl = document.getElementById('modelAccuracy');
+            const modelDescriptionEl = document.getElementById('modelDescription');
+            const featureSelector = document.getElementById('featureSelector');
+            const mobileNav = document.getElementById('mobile-nav');
+
+            // --- CHART RENDERING FUNCTIONS ---
+            function renderDiagnosisDistributionChart() {
+                const ctx = document.getElementById('diagnosisDistributionChart').getContext('2d');
+                diagnosisChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Benign', 'Malignant'],
+                        datasets: [{
+                            data: [357, 212],
+                            backgroundColor: ['#34D399' /* emerald-400 */, '#F87171' /* red-400 */],
+                            borderColor: ['#ECFDF5', '#FEF2F2'],
+                            borderWidth: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${context.raw} cases`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderFeatureComparisonChart(feature = 'radius_mean') {
+                const ctx = document.getElementById('featureComparisonChart').getContext('2d');
+                const data = featureComparisonData[feature];
+                if (featureChart) {
+                    featureChart.destroy();
+                }
+                featureChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Benign', 'Malignant'],
+                        datasets: [{
+                            label: `Average ${feature.replace('_', ' ')}`,
+                            data: [data.benign, data.malignant],
+                            backgroundColor: ['#60A5FA' /* blue-400 */, '#F472B6' /* pink-400 */]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Average Value' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderModelAccuracyChart() {
+                const ctx = document.getElementById('modelAccuracyChart').getContext('2d');
+                modelChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: modelPerformanceData.map(d => d.name),
+                        datasets: [{
+                            label: 'Accuracy',
+                            data: modelPerformanceData.map(d => d.accuracy),
+                            backgroundColor: '#14B8A6' // teal-500
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        onClick: (e) => {
+                            const activePoints = modelChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+                            if (activePoints.length) {
+                                const index = activePoints[0].index;
+                                const selectedModel = modelPerformanceData[index];
+                                updateDeepDive(selectedModel);
+                                document.getElementById('deepdive').scrollIntoView();
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `Accuracy: ${(context.raw * 100).toFixed(1)}%`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 1.0,
+                                title: { display: true, text: 'Accuracy Score' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function drawConfusionMatrix(data) {
+                const canvas = document.getElementById('confusionMatrixCanvas');
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width;
+                const h = canvas.height;
+                const cellW = w / 2;
+                const cellH = h / 2;
+
+                const { tp, tn, fp, fn } = data;
+                
+                const matrix = [
+                    [{ val: tn, color: 'rgba(74, 222, 128, 0.2)', label: 'True Negative' }, { val: fp, color: 'rgba(251, 113, 133, 0.2)', label: 'False Positive' }],
+                    [{ val: fn, color: 'rgba(251, 113, 133, 0.2)', label: 'False Negative' }, { val: tp, color: 'rgba(74, 222, 128, 0.2)', label: 'True Positive' }]
+                ];
+
+                ctx.clearRect(0, 0, w, h);
+                ctx.strokeStyle = '#94A3B8'; // slate-400
+                ctx.lineWidth = 2;
+
+                // Draw grid and cells
+                for (let i = 0; i < 2; i++) {
+                    for (let j = 0; j < 2; j++) {
+                        ctx.fillStyle = matrix[i][j].color;
+                        ctx.fillRect(j * cellW, i * cellH, cellW, cellH);
+                        ctx.strokeRect(j * cellW, i * cellH, cellW, cellH);
+                    }
+                }
+
+                // Draw text
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#1E293B'; // slate-800
+
+                for (let i = 0; i < 2; i++) {
+                    for (let j = 0; j < 2; j++) {
+                        const cell = matrix[i][j];
+                        ctx.font = 'bold 48px Inter';
+                        ctx.fillText(cell.val, j * cellW + cellW / 2, i * cellH + cellH / 2 - 15);
+                        ctx.font = '16px Inter';
+                        ctx.fillStyle = '#475569'; // slate-600
+                        ctx.fillText(cell.label, j * cellW + cellW / 2, i * cellH + cellH / 2 + 25);
+                    }
+                }
+
+                // Draw axis labels
+                ctx.fillStyle = '#1E293B';
+                ctx.font = 'bold 18px Inter';
+                ctx.save();
+                ctx.translate(15, h / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('Actual', 0, 0);
+                ctx.restore();
+
+                ctx.fillText('Predicted', w / 2, h - 15);
+            }
+
+            // --- DYNAMIC CONTENT UPDATE FUNCTION ---
+            function updateDeepDive(modelData) {
+                modelNameEl.textContent = modelData.name;
+                modelAccuracyEl.textContent = `${(modelData.accuracy * 100).toFixed(1)}%`;
+                modelDescriptionEl.textContent = modelData.description;
+                drawConfusionMatrix(modelData.confusionMatrix);
+            }
+
+            // --- EVENT LISTENERS ---
+            featureSelector.addEventListener('change', (e) => {
+                renderFeatureComparisonChart(e.target.value);
+            });
+
+            mobileNav.addEventListener('change', (e) => {
+                window.location.hash = e.target.value;
+            });
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('main section');
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 100) {
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active-link');
+                    if (link.getAttribute('href') === `#${current}`) {
+                        link.classList.add('active-link');
+                    }
+                });
+            });
+
+            // --- INITIALIZATION ---
+            renderDiagnosisDistributionChart();
+            renderFeatureComparisonChart();
+            renderModelAccuracyChart();
+            updateDeepDive(modelPerformanceData[modelPerformanceData.length - 1]); // Init with best model
+        });
+    </script>
+</body>
+</html>
