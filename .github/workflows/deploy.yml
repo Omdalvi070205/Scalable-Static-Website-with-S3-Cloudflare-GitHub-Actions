@@ -23,4 +23,4 @@ jobs:
           aws-region: us-east-1 # Your bucket's region
 
       - name: Sync S3 Bucket
-       run: aws s3 sync build/ s3://dockers3projectelevate
+         run: aws s3 sync build/ s3://dockers3projectelevate
