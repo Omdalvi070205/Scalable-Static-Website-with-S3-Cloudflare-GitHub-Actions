@@ -25,4 +25,4 @@ jobs:
       - name: Sync files to S3
         run: 
           # Use your unique S3 bucket name here
-          aws s3 sync .s3-website-us-east-1.amazonaws.com --delete
+          aws s3 sync http://dockers3projectelevate.s3-website-us-east-1.amazonaws.com
