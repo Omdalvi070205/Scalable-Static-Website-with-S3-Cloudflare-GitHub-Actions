@@ -32,7 +32,6 @@ A modern, scalable static website hosted on AWS S3 with global CDN via Cloudflar
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml  # GitHub Actions workflow
-├── favicon.ico         # Site favicon
 └── README.md          # This file
 ```
 
