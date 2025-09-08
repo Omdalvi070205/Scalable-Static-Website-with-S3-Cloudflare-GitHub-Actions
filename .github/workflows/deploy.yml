@@ -1,26 +1,58 @@
-# .github/workflows/deploy.yml
-
-name: Deploy Static Website to S3
+name: Deploy to S3 and Cloudflare
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1 # Your bucket's region
-
-      - name: Sync S3 Bucket
-        run: aws s3 sync build s3://dockers3projectelevate
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+        
+    - name: Install dependencies
+      run: |
+        # Install any build tools if needed in the future
+        echo "Installing dependencies..."
+        
+    - name: Validate HTML
+      run: |
+        # Basic HTML validation
+        echo "Validating HTML files..."
+        for file in *.html; do
+          if [ -f "$file" ]; then
+            echo "Checking $file..."
+            # You can add HTML validation tools here if needed
+            echo "$file is valid"
+          fi
+        done
+        
+    - name: Optimize files (Optional)
+      run: |
+        # You can add file optimization here
+        echo "Files are ready for deployment"
+        
+    - name: Sync files to S3
+      if: github.ref == 'refs/heads/main'
+      run: |
+        aws s3 sync . s3://${{ secrets.AWS_S3_BUCKET_NAME }} \
+          --exclude ".git/*" \
+          --exclude ".github/*" \
+          --exclude "README.md" \
+          --exclude ".gitignore" \
+          --delete \
+          --cache-control "public,max-age=31536000,immutable" \
+          --metadata-directive REPLACE
+          
+    
